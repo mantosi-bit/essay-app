@@ -555,6 +555,14 @@ ${currentMode === 'text' ? `英作文:\n${essayText}` : ''}
       });
 
       const data = await response.json();
+      if (data.error) {
+        alert('APIエラー: ' + data.error.message);
+        return;
+      }
+      if (!data.content || !data.content.length) {
+        alert('レスポンスが空です。しばらく待ってから再試行してください。\n' + JSON.stringify(data));
+        return;
+      }
       const text = data.content.map(i => i.text || '').join('');
       const clean = text.replace(/```json|```/g, '').trim();
       const result = JSON.parse(clean);
