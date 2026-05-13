@@ -365,12 +365,6 @@
   </div>
 
   <div class="card fade-in" style="animation-delay:0.06s">
-    <div class="card-label">Theme / Topic</div>
-    <input class="theme-input" id="theme-input" type="text"
-      placeholder="例: Should students use smartphones in class?" />
-  </div>
-
-  <div class="card fade-in" style="animation-delay:0.12s">
     <div class="card-label">Your Essay</div>
     <div class="mode-tabs">
       <button class="mode-tab active" id="tab-image" onclick="switchMode('image')">📷 写真で添削</button>
@@ -378,18 +372,33 @@
     </div>
 
     <div id="mode-image">
-      <div class="image-upload-area" id="upload-area">
-        <input type="file" accept="image/*" id="image-input" />
-        <div class="upload-icon">📸</div>
-        <div class="upload-text">
-          <strong>タップして写真を選ぶ</strong><br>
-          手書き英作文を撮影してアップロード
+      <!-- 写真1: テーマ・問題用紙 -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--gold);letter-spacing:0.15em;margin-bottom:8px;">① 問題用紙（テーマ）<span style="font-weight:400;color:#bba87a;margin-left:8px;">任意</span></div>
+        <div class="image-upload-area" id="upload-area-topic">
+          <input type="file" accept="image/*" id="image-input-topic" />
+          <div class="upload-icon" style="font-size:28px;margin-bottom:6px;">📄</div>
+          <div class="upload-text"><strong>テーマ・問題文の写真</strong></div>
+          <div class="upload-hint">なければスキップOK</div>
         </div>
-        <div class="upload-hint">JPG・PNG・HEIC など対応</div>
+        <div class="image-preview-wrap" id="preview-wrap-topic">
+          <img class="image-preview" id="preview-img-topic" src="" alt="テーマ画像" />
+          <button class="remove-image-btn" onclick="removeImage('topic')">×</button>
+        </div>
       </div>
-      <div class="image-preview-wrap" id="preview-wrap">
-        <img class="image-preview" id="preview-img" src="" alt="プレビュー" />
-        <button class="remove-image-btn" onclick="removeImage()">×</button>
+      <!-- 写真2: 英作文 -->
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--gold);letter-spacing:0.15em;margin-bottom:8px;">② 手書き英作文 <span style="color:#c0392b;">*必須</span></div>
+        <div class="image-upload-area" id="upload-area-essay">
+          <input type="file" accept="image/*" id="image-input-essay" />
+          <div class="upload-icon" style="font-size:28px;margin-bottom:6px;">✍️</div>
+          <div class="upload-text"><strong>英作文の写真</strong></div>
+          <div class="upload-hint">JPG・PNG・HEIC など対応</div>
+        </div>
+        <div class="image-preview-wrap" id="preview-wrap-essay">
+          <img class="image-preview" id="preview-img-essay" src="" alt="英作文画像" />
+          <button class="remove-image-btn" onclick="removeImage('essay')">×</button>
+        </div>
       </div>
     </div>
 
@@ -439,8 +448,10 @@
 <script>
   let selectedLevel = '英検準2級';
   let currentMode = 'image';
-  let imageBase64 = null;
-  let imageMimeType = null;
+  let imageBase64Essay = null;
+  let imageMimeTypeEssay = null;
+  let imageBase64Topic = null;
+  let imageMimeTypeTopic = null;
 
   document.querySelectorAll('.level-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -462,48 +473,70 @@
     document.getElementById('tab-text').classList.toggle('active',  mode === 'text');
   }
 
-  document.getElementById('image-input').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) loadImage(file);
+  // 英作文画像
+  document.getElementById('image-input-essay').addEventListener('change', function(e) {
+    if (e.target.files[0]) loadImage(e.target.files[0], 'essay');
+  });
+  // テーマ画像
+  document.getElementById('image-input-topic').addEventListener('change', function(e) {
+    if (e.target.files[0]) loadImage(e.target.files[0], 'topic');
   });
 
-  const uploadArea = document.getElementById('upload-area');
-  uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
-  uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
-  uploadArea.addEventListener('drop', e => {
-    e.preventDefault();
-    uploadArea.classList.remove('dragover');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) loadImage(file);
+  // ドラッグ＆ドロップ
+  ['essay','topic'].forEach(function(type) {
+    const area = document.getElementById('upload-area-' + type);
+    area.addEventListener('dragover', function(e) { e.preventDefault(); area.classList.add('dragover'); });
+    area.addEventListener('dragleave', function() { area.classList.remove('dragover'); });
+    area.addEventListener('drop', function(e) {
+      e.preventDefault();
+      area.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) loadImage(file, type);
+    });
   });
 
-  function loadImage(file) {
-    imageMimeType = file.type || 'image/jpeg';
+  function loadImage(file, type) {
+    const mime = file.type || 'image/jpeg';
     const reader = new FileReader();
     reader.onload = function(ev) {
-      imageBase64 = ev.target.result.split(',')[1];
-      document.getElementById('preview-img').src = ev.target.result;
-      document.getElementById('upload-area').style.display = 'none';
-      document.getElementById('preview-wrap').classList.add('show');
+      const b64 = ev.target.result.split(',')[1];
+      if (type === 'essay') {
+        imageBase64Essay = b64;
+        imageMimeTypeEssay = mime;
+        document.getElementById('preview-img-essay').src = ev.target.result;
+        document.getElementById('upload-area-essay').style.display = 'none';
+        document.getElementById('preview-wrap-essay').classList.add('show');
+      } else {
+        imageBase64Topic = b64;
+        imageMimeTypeTopic = mime;
+        document.getElementById('preview-img-topic').src = ev.target.result;
+        document.getElementById('upload-area-topic').style.display = 'none';
+        document.getElementById('preview-wrap-topic').classList.add('show');
+      }
     };
     reader.readAsDataURL(file);
   }
 
-  function removeImage() {
-    imageBase64 = null;
-    imageMimeType = null;
-    document.getElementById('image-input').value = '';
-    document.getElementById('preview-img').src = '';
-    document.getElementById('preview-wrap').classList.remove('show');
-    document.getElementById('upload-area').style.display = 'block';
+  function removeImage(type) {
+    if (type === 'essay') {
+      imageBase64Essay = null; imageMimeTypeEssay = null;
+      document.getElementById('image-input-essay').value = '';
+      document.getElementById('preview-img-essay').src = '';
+      document.getElementById('preview-wrap-essay').classList.remove('show');
+      document.getElementById('upload-area-essay').style.display = 'block';
+    } else {
+      imageBase64Topic = null; imageMimeTypeTopic = null;
+      document.getElementById('image-input-topic').value = '';
+      document.getElementById('preview-img-topic').src = '';
+      document.getElementById('preview-wrap-topic').classList.remove('show');
+      document.getElementById('upload-area-topic').style.display = 'block';
+    }
   }
 
   document.getElementById('submit-btn').addEventListener('click', runCorrection);
 
   async function runCorrection() {
-    const theme = document.getElementById('theme-input').value.trim();
-
-    if (currentMode === 'image' && !imageBase64) { alert('画像をアップロードしてください。'); return; }
+    if (currentMode === 'image' && !imageBase64Essay) { alert('英作文の写真をアップロードしてください。'); return; }
     if (currentMode === 'text' && !document.getElementById('essay-input').value.trim()) { alert('英作文を入力してください。'); return; }
 
     document.getElementById('submit-btn').disabled = true;
@@ -511,15 +544,35 @@
     document.getElementById('result-area').classList.remove('show');
 
     const essayText = document.getElementById('essay-input').value.trim();
-    const prompt = `あなたは英語の試験（${selectedLevel}レベル）の採点官です。
-${currentMode === 'image' ? '添付の画像に書かれた手書きの英作文を読み取り、' : '以下の英作文を'}丁寧に添削してください。
-${theme ? `テーマ: ${theme}` : ''}
-${currentMode === 'text' ? `英作文:\n${essayText}` : ''}
+    const prompt = currentMode === 'image'
+      ? `あなたは英語の試験（${selectedLevel}レベル）の採点官です。
+添付の画像をよく見て、以下を行ってください：
+${imageBase64Topic ? '・1枚目の画像：問題文・テーマが書かれています。読み取ってください。\n・2枚目の画像：手書きの英作文です。読み取ってください。' : '・画像に書かれた手書きの英作文を読み取ってください。問題文があれば合わせて読み取ってください。'}
+・${selectedLevel}レベルとして丁寧に添削してください。
 
 必ず下記のJSON形式のみで返答してください。余分な文章やMarkdownのコードブロックは含めないでください。
 
 {
-  "recognized": "画像から読み取った元の英文（テキスト入力の場合は空文字）",
+  "topic": "読み取ったテーマ・問題文。なければ空文字",
+  "recognized": "読み取った手書き英作文の全文",
+  "score": 数値(0-100),
+  "grade": "A/B/C/D/E のいずれか",
+  "corrected": "修正後の全文（英語）",
+  "errors": [{"original": "誤りの箇所", "fix": "修正後", "reason": "理由（日本語）"}],
+  "feedback": "全体的なフィードバック（日本語、3〜5文）",
+  "advice": "今後の学習アドバイス（日本語、2〜3文）"
+}`
+      : `あなたは英語の試験（${selectedLevel}レベル）の採点官です。
+以下の英作文を丁寧に添削してください。
+
+英作文:
+${essayText}
+
+必ず下記のJSON形式のみで返答してください。余分な文章やMarkdownのコードブロックは含めないでください。
+
+{
+  "topic": "",
+  "recognized": "",
   "score": 数値(0-100),
   "grade": "A/B/C/D/E のいずれか",
   "corrected": "修正後の全文（英語）",
@@ -531,10 +584,12 @@ ${currentMode === 'text' ? `英作文:\n${essayText}` : ''}
     try {
       let userContent;
       if (currentMode === 'image') {
-        userContent = [
-          { type: 'image', source: { type: 'base64', media_type: imageMimeType, data: imageBase64 } },
-          { type: 'text', text: prompt }
-        ];
+        userContent = [];
+        if (imageBase64Topic) {
+          userContent.push({ type: 'image', source: { type: 'base64', media_type: imageMimeTypeTopic, data: imageBase64Topic } });
+        }
+        userContent.push({ type: 'image', source: { type: 'base64', media_type: imageMimeTypeEssay, data: imageBase64Essay } });
+        userContent.push({ type: 'text', text: prompt });
       } else {
         userContent = prompt;
       }
@@ -587,7 +642,10 @@ ${currentMode === 'text' ? `英作文:\n${essayText}` : ''}
 
     const recognizedCard = document.getElementById('recognized-card');
     if (currentMode === 'image' && r.recognized) {
-      document.getElementById('recognized-text').textContent = r.recognized;
+      let recognizedHTML = '';
+      if (r.topic) recognizedHTML += `<div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:8px;">📝 テーマ：${r.topic}</div>`;
+      recognizedHTML += `<div class="recognized-text">${r.recognized}</div>`;
+      document.getElementById('recognized-text').innerHTML = recognizedHTML;
       recognizedCard.style.display = 'block';
     } else {
       recognizedCard.style.display = 'none';
